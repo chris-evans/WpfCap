@@ -5,11 +5,13 @@ Reusable WPF control to display high frame rate video such as WebCam or framegra
 Usage
 ====
 The usage of the control is similar to the usage of regular WPF Image control:
-<cap:CapPlayer xmlns:cap="http://schemas.sharpsoft.net/xaml"/>
+
+&lt;cap:CapPlayer xmlns:cap="http://schemas.sharpsoft.net/xaml"/>
 
 You will need to set the Device to the camera to be rendered.
 
 Credits
 =====
 Originally from http://wpfcap.codeplex.com/ (http://www.codeplex.com/site/users/view/tamirk)
+
 Many bugs squashed by http://www.geertvanhorrik.com/ (https://web.archive.org/web/20120609081227/http://blog.catenalogic.com/post/2008/12/22/Retrieving-snapshots-from-a-webcam.aspx)
