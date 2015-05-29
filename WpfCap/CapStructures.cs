@@ -23,119 +23,168 @@ using System.Runtime.InteropServices;
 
 namespace WpfCap
 {
-    [ComVisible(false)]
-    internal enum PinDirection
-    {
-        Input,
-        Output
-    }
+	[ComVisible(false)]
+	internal enum PinDirection
+	{
+		Input,
+		Output
+	}
 
-    [ComVisible(false), StructLayout(LayoutKind.Sequential)]
-    internal class AMMediaType : IDisposable
-    {
-        public Guid MajorType;
+	[Flags]
+	public enum AMRenderExFlags
+	{
+		None = 0,
+		RenderToExistingRenderers = 1
+	}
 
-        public Guid SubType;
+	/// <summary>
+	/// From KSPROPERTY_SUPPORT_* defines
+	/// </summary>
+	public enum KSPropertySupport
+	{
+		Get = 1,
+		Set = 2
+	}
 
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool FixedSizeSamples = true;
+	[ComVisible(false), StructLayout(LayoutKind.Sequential)]
+	internal class AMMediaType : IDisposable
+	{
+		public Guid MajorType;
 
-        [MarshalAs(UnmanagedType.Bool)]
-        public bool TemporalCompression;
+		public Guid SubType;
 
-        public int SampleSize = 1;
+		[MarshalAs(UnmanagedType.Bool)]
+		public bool FixedSizeSamples = true;
 
-        public Guid FormatType;
+		[MarshalAs(UnmanagedType.Bool)]
+		public bool TemporalCompression;
 
-        public IntPtr unkPtr;
+		public int SampleSize = 1;
 
-        public int FormatSize;
+		public Guid FormatType;
 
-        public IntPtr FormatPtr;
+		public IntPtr unkPtr;
 
-        ~AMMediaType()
-        {
-            Dispose(false);
-        }
+		public int FormatSize;
 
-        public void Dispose()
-        {
-            Dispose(true);
-            // remove me from the Finalization queue 
-            GC.SuppressFinalize(this);
-        }
+		public IntPtr FormatPtr;
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (FormatSize != 0)
-                Marshal.FreeCoTaskMem(FormatPtr);
-            if (unkPtr != IntPtr.Zero)
-                Marshal.Release(unkPtr);
-        }
-    }
+		~AMMediaType()
+		{
+			Dispose(false);
+		}
 
-    [ComVisible(false), StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Unicode)]
-    internal class PinInfo
-    {
-        public IBaseFilter Filter;
+		public void Dispose()
+		{
+			Dispose(true);
+			// remove me from the Finalization queue 
+			GC.SuppressFinalize(this);
+		}
 
-        public PinDirection Direction;
+		protected virtual void Dispose(bool disposing)
+		{
+			if (FormatSize != 0)
+				Marshal.FreeCoTaskMem(FormatPtr);
+			if (unkPtr != IntPtr.Zero)
+				Marshal.Release(unkPtr);
+		}
+	}
 
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string Name;
-    }
+	[ComVisible(false), StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Unicode)]
+	internal class PinInfo
+	{
+		public IBaseFilter Filter;
 
-    [ComVisible(false), StructLayout(LayoutKind.Sequential)]
-    internal struct VideoInfoHeader
-    {
-        public RECT SrcRect;
+		public PinDirection Direction;
 
-        public RECT TargetRect;
+		[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+		public string Name;
+	}
 
-        public int BitRate;
+	[ComVisible(false), StructLayout(LayoutKind.Sequential)]
+	internal struct VideoInfoHeader
+	{
+		public RECT SrcRect;
 
-        public int BitErrorRate;
+		public RECT TargetRect;
 
-        public long AverageTimePerFrame;
+		public int BitRate;
 
-        public BitmapInfoHeader BmiHeader;
-    }
-    
-    [ComVisible(false), StructLayout(LayoutKind.Sequential, Pack = 2)]
-    internal struct BitmapInfoHeader
-    {
-        public int Size;
+		public int BitErrorRate;
 
-        public int Width;
+		public long AverageTimePerFrame;
 
-        public int Height;
+		public BitmapInfoHeader BmiHeader;
+	}
 
-        public short Planes;
+	[ComVisible(false), StructLayout(LayoutKind.Sequential, Pack = 2)]
+	internal struct BitmapInfoHeader
+	{
+		public int Size;
 
-        public short BitCount;
+		public int Width;
 
-        public int Compression;
+		public int Height;
 
-        public int ImageSize;
+		public short Planes;
 
-        public int XPelsPerMeter;
+		public short BitCount;
 
-        public int YPelsPerMeter;
+		public int Compression;
 
-        public int ColorsUsed;
+		public int ImageSize;
 
-        public int ColorsImportant;
-    }
+		public int XPelsPerMeter;
 
-    [ComVisible(false), StructLayout(LayoutKind.Sequential)]
-    internal struct RECT
-    {
-        public int Left;
+		public int YPelsPerMeter;
 
-        public int Top;
+		public int ColorsUsed;
 
-        public int Right;
+		public int ColorsImportant;
+	}
 
-        public int Bottom;
-    }
+	[ComVisible(false), StructLayout(LayoutKind.Sequential)]
+	internal struct VideoStreamConfigCaps
+	{
+		public Guid FormatType;
+		public uint VideoStandard;
+		public Size InputSize;
+		public Size MinCroppingSize;
+		public Size MaxCroppingSize;
+		public int CropGranularityX;
+		public int CropGranularityY;
+		public int CropAlignX;
+		public int CropAlignY;
+		public Size MinOutputSize;
+		public Size MaxOutputSize;
+		public int OutputGranularityX;
+		public int OutputGranularityY;
+		public int StretchTapsX;
+		public int StretchTapsY;
+		public int ShrinkTapsX;
+		public int ShrinkTapsY;
+		public Int64 MinFrameInterval;
+		public Int64 MaxFrameInterval;
+		public int MinBitsPerSecond;
+		public int MaxBitsPerSecond;
+	}
+
+	[ComVisible(false), StructLayout(LayoutKind.Sequential)]
+	internal struct Size
+	{
+		public int X;
+		public int Y;
+	}
+
+	[ComVisible(false), StructLayout(LayoutKind.Sequential)]
+	internal struct RECT
+	{
+		public int Left;
+
+		public int Top;
+
+		public int Right;
+
+		public int Bottom;
+	}
 }
