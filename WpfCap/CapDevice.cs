@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Interop;
 using System.Windows;
 using System.Diagnostics;
+using System.Windows.Media.Imaging;
 
 namespace WpfCap
 {
@@ -77,6 +78,11 @@ namespace WpfCap
 		/// Event that is invoked when a new bitmap is ready
 		/// </summary>
 		public event EventHandler NewBitmapReady;
+
+		/// <summary>
+		/// Event notifying of new frame being available.
+		/// </summary>
+		public event EventHandler FrameAvailable;
 		#endregion
 
 		#region Properties
@@ -201,6 +207,7 @@ namespace WpfCap
 					{
 						BitmapSource.Invalidate();
 						UpdateFramerate();
+						FrameAvailable(this, null);
 					}
 				}, null);
 			}
@@ -233,9 +240,7 @@ namespace WpfCap
 
 						// Invoke event
 						if (NewBitmapReady != null)
-						{
-							NewBitmapReady(this, null);
-						}
+						{ NewBitmapReady(this, null); }
 					}
 				}
 				catch (Exception ex)
@@ -306,7 +311,7 @@ namespace WpfCap
 		/// <summary>;
 		/// Starts grabbing images from the capture device
 		/// </summary>
-		public void Start()
+		public virtual void Start()
 		{
 			if (_captureTask != null)
 			{
@@ -396,7 +401,7 @@ namespace WpfCap
 		/// <summary>
 		/// Stops grabbing images from the capture device
 		/// </summary>
-		public void Stop()
+		public virtual void Stop()
 		{
 			// Yes, stop via the event
 			_stopSignal.Set();
