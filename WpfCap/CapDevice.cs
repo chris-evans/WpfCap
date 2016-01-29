@@ -207,7 +207,10 @@ namespace WpfCap
 					{
 						BitmapSource.Invalidate();
 						UpdateFramerate();
-						FrameAvailable(this, null);
+
+                        var handler = FrameAvailable;
+                        if (handler != null)
+                        { handler(this, null); }
 					}
 				}, null);
 			}
