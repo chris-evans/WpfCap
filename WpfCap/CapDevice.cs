@@ -406,8 +406,8 @@ namespace WpfCap
 		/// </summary>
 		public virtual void Stop()
 		{
-			// Yes, stop via the event
-			_stopSignal.Set();
+            if (_stopSignal != null)
+            { _stopSignal.Set(); }
 		}
 		#endregion
 
