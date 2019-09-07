@@ -35,13 +35,13 @@ namespace AvCapWPF
 
         private void StopDevice()
         {
-            var device = Preview.Player.Device;
+            var device = Preview.Device;
             if (device != null)
                 device.Stop();
         }
         private void StartDevice()
         {
-            var device = Preview.Player.Device;
+            var device = Preview.Device;
             if (device != null)
                 device.Start();
         }

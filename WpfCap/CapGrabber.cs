@@ -18,6 +18,10 @@
 using System;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using System.Reactive;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Interop;
 
 namespace WpfCap
 {
@@ -29,14 +33,14 @@ namespace WpfCap
         #endregion
 
         #region Variables
-        int _height = default(int);
-        int _width = default(int);
+        private int _height = default(int);
+        private int _width = default(int);
+        private FrameBuffer _frameBuffer;
         #endregion 
 
         #region Constructor & destructor
         public CapGrabber()
-        {
-        }
+        { }
         #endregion
 
         #region Events
@@ -46,7 +50,11 @@ namespace WpfCap
         #endregion
 
         #region Properties
+
         public IntPtr Map { get; set; }
+
+        public IObservable<InteropBitmap> Frame
+        { get => _frameBuffer?.Frame; }
 
         public int Width
         {
@@ -67,6 +75,7 @@ namespace WpfCap
                 OnPropertyChanged("Height");
             }
         }
+
         #endregion
 
         #region Methods
@@ -77,28 +86,24 @@ namespace WpfCap
 
         public int BufferCB(double sampleTime, IntPtr buffer, int bufferLen)
         {
+            _frameBuffer?.NewFrameData(buffer, bufferLen);
+
             if (Map != IntPtr.Zero)
             {
                 CopyMemory(Map, buffer, bufferLen);
                 OnNewFrameArrived();
             }
+
             return 0;
         }
 
         void OnNewFrameArrived()
-        {
-            if (NewFrameArrived != null)
-            {
-                NewFrameArrived(this, null);
-            }
-        }
+        { NewFrameArrived?.Invoke(this, null); }
 
         void OnPropertyChanged(string name)
         {
-            if (PropertyChanged != null)
-            {
-                PropertyChanged(this, new PropertyChangedEventArgs(name));
-            }
+            _frameBuffer = new FrameBuffer(Width, Height, PixelFormats.Bgr32);
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
         #endregion
     }
