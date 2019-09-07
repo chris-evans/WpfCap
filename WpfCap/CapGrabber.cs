@@ -16,95 +16,27 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 using System;
-using System.Runtime.InteropServices;
-using System.ComponentModel;
-using System.Reactive;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Interop;
 
 namespace WpfCap
 {
-    internal class CapGrabber : ISampleGrabberCB, INotifyPropertyChanged
+    /// <summary>
+    /// implementation allows for callback when samples are available.  Sample is immidiately forwarded
+    /// to our framebuffer for appropriate handling and implementation.
+    /// </summary>
+    internal class CapGrabber : ISampleGrabberCB
     {
-        #region Win32 imports
-        [DllImport("Kernel32.dll", EntryPoint = "RtlMoveMemory")]
-        private static extern void CopyMemory(IntPtr Destination, IntPtr Source, int Length);
-        #endregion
+        private readonly FrameStream _frameBuffer;
 
-        #region Variables
-        private int _height = default(int);
-        private int _width = default(int);
-        private FrameBuffer _frameBuffer;
-        #endregion 
+        public CapGrabber(FrameStream frameBuffer)
+        { _frameBuffer = frameBuffer; }
 
-        #region Constructor & destructor
-        public CapGrabber()
-        { }
-        #endregion
-
-        #region Events
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        public event EventHandler NewFrameArrived;
-        #endregion
-
-        #region Properties
-
-        public IntPtr Map { get; set; }
-
-        public IObservable<InteropBitmap> Frame
-        { get => _frameBuffer?.Frame; }
-
-        public int Width
-        {
-            get { return _width; }
-            set
-            {
-                _width = value;
-                OnPropertyChanged("Width");
-            }
-        }
-
-        public int Height
-        {
-            get { return _height; }
-            set
-            {
-                _height = value;
-                OnPropertyChanged("Height");
-            }
-        }
-
-        #endregion
-
-        #region Methods
         public int SampleCB(double sampleTime, IntPtr sample)
-        {
-            return 0;
-        }
+        { return 0; }
 
         public int BufferCB(double sampleTime, IntPtr buffer, int bufferLen)
         {
             _frameBuffer?.NewFrameData(buffer, bufferLen);
-
-            if (Map != IntPtr.Zero)
-            {
-                CopyMemory(Map, buffer, bufferLen);
-                OnNewFrameArrived();
-            }
-
             return 0;
         }
-
-        void OnNewFrameArrived()
-        { NewFrameArrived?.Invoke(this, null); }
-
-        void OnPropertyChanged(string name)
-        {
-            _frameBuffer = new FrameBuffer(Width, Height, PixelFormats.Bgr32);
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-        #endregion
     }
 }

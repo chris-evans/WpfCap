@@ -12,25 +12,18 @@ using System.Windows.Media.Imaging;
 
 namespace WpfCap
 {
-    public class FrameBuffer
+    public class FrameStream
     {
         private readonly Subject<InteropBitmap> _frame;
-        private readonly int _width;
-        private readonly int _height;
-        private readonly PixelFormat _pixelFormat;
         private BufferEntry _bufferEntry;
 
         public IObservable<InteropBitmap> Frame
         { get => _frame; }
 
-        public FrameBuffer(int width, int height, PixelFormat pixelFormat)
+        public FrameStream(int width, int height, PixelFormat pixelFormat)
         {
-            _width = width;
-            _height = height;
-            _pixelFormat = pixelFormat;
             _frame = new Subject<InteropBitmap>();
-
-            Application.Current?.Dispatcher?.Invoke(() => _bufferEntry = new BufferEntry(width, height, pixelFormat));
+            _bufferEntry = _bufferEntry = new BufferEntry(width, height, pixelFormat);
         }
 
         public void NewFrameData(IntPtr buffer, int bufferLen)
@@ -52,19 +45,21 @@ namespace WpfCap
                 _width = width;
                 _height = height;
 
+                // allocate our memory mapped file that will be used to update image content.
                 var totalByteCount = (uint)(_width * _height * _pixelFormat.BitsPerPixel / 8);
                 _section = CreateFileMapping(new IntPtr(-1), IntPtr.Zero, 0x04, 0, totalByteCount, null);
                 _map = MapViewOfFile(_section, 0xF001F, 0, 0, totalByteCount);
-
-                // Get the bitmap
-                if (totalByteCount != 0)
-                { _bitmap = Imaging.CreateBitmapSourceFromMemorySection(_section, _width, _height, _pixelFormat, _width * _pixelFormat.BitsPerPixel / 8, 0) as InteropBitmap; }
             }
 
             public InteropBitmap Update(IntPtr buffer, int bufferLength)
             {
+                // each time a new image comes in we will create a new bitmap based on the new provided data.  We will also freeze the bitmap so it can be assigned outside
+                // of the UI thread.  This allows us to do almost all work off the UI thread, while the UI can simply update it's bound property to now include the new
+                // bitmap.
                 CopyMemory(_map, buffer, bufferLength);
-                return _bitmap;
+                var bitmap = Imaging.CreateBitmapSourceFromMemorySection(_section, _width, _height, _pixelFormat, _width * _pixelFormat.BitsPerPixel / 8, 0) as InteropBitmap;
+                bitmap.Freeze();
+                return bitmap;
             }
 
             [DllImport("kernel32.dll", SetLastError = true)]

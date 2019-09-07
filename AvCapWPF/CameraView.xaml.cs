@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using WpfCap;
 
 namespace AvCapWPF
@@ -23,7 +24,7 @@ namespace AvCapWPF
         {
             InitializeComponent();
 
-            DeviceBox.ItemsSource = CapDevice.GetDevices(this.Dispatcher);
+            DeviceBox.ItemsSource = CameraDevices.GetDevices();
             DeviceBox.DisplayMemberPath = "Name";
             DeviceBox.SelectionChanged += async (o, e) =>
             {
@@ -32,8 +33,7 @@ namespace AvCapWPF
 
                 Device = (CapDevice)DeviceBox.SelectedItem;
                 var frames = await Device.Start();
-                frames.Throttle(TimeSpan.FromMilliseconds(33))
-                    .ObserveOnDispatcher()
+                frames.ObserveOnDispatcher(DispatcherPriority.Render)
                     .Subscribe(DoIt);
             };
 
@@ -43,29 +43,12 @@ namespace AvCapWPF
 
         private void DoIt(InteropBitmap bs)
         {
-
             NextPicture.Source = bs;
-            bs.Invalidate();
+            CapturedImage = bs;
         }
 
         private void CaptureButton_Click(object sender, RoutedEventArgs e)
-        {
-            Device.Stop();
-
-            // Store current image from the webcam
-            //var bitmap = Player.CurrentBitmap;
-            //if (bitmap == null) return;
-
-            //Transform tr = new ScaleTransform(-1, 1);
-            //var transformedBmp = new TransformedBitmap();
-            //transformedBmp.BeginInit();
-            //transformedBmp.Source = bitmap;
-            //transformedBmp.Transform = tr;
-            //transformedBmp.EndInit();
-            //bitmap = transformedBmp;
-
-            //CapturedImage = bitmap;
-        }
+        { Device.Stop(); }
 
         public BitmapSource CapturedImage { get; set; }
     }

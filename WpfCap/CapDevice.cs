@@ -1,39 +1,70 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows.Threading;
 //using System.Windows.Threading;
 
 namespace WpfCap
 {
+    public static class CameraDevices
+    {
+        public static readonly Guid SystemDeviceEnum = new Guid(0x62BE5D10, 0x60EB, 0x11D0, 0xBD, 0x3B, 0x00, 0xA0, 0xC9, 0x11, 0xCE, 0x86);
+        public static readonly Guid VideoInputDevice = new Guid(0x860BB310, 0x5D01, 0x11D0, 0xBD, 0x3B, 0x00, 0xA0, 0xC9, 0x11, 0xCE, 0x86);
+        
+        public static IEnumerable<CapDevice> GetDevices()
+        { return GetFilters().Select((x) => new CapDevice(x.MonikerString)); }
+
+        public static FilterInfo GetFilter(string monikor)
+        { return GetFilters().FirstOrDefault((x) => x.MonikerString == monikor); }
+
+        public static IEnumerable<FilterInfo> GetFilters()
+        {
+            var filters = new List<FilterInfo>();
+            var monikor = new IMoniker[1];
+            var deviceEnum = Activator.CreateInstance(Type.GetTypeFromCLSID(SystemDeviceEnum)) as ICreateDevEnum;
+            var videoDeviceEnum = VideoInputDevice;
+
+            if (deviceEnum.CreateClassEnumerator(ref videoDeviceEnum, out var moniker, 0) == 0)
+            {
+                while (true)
+                {
+                    int r = moniker.Next(1, monikor, IntPtr.Zero);
+
+                    if (r != 0 || monikor[0] == null)
+                    { break; }
+
+                    filters.Add(new FilterInfo(monikor[0]));
+                    Marshal.ReleaseComObject(monikor[0]);
+                    monikor[0] = null;
+                }
+            }
+
+            return filters;
+        }
+    }
+
     public class CapDevice : IDisposable
     {
         #region Variables
 
-        private readonly ManualResetEvent _stopSignal;
+        private readonly ManualResetEvent _running;
+        private readonly string _name;
+        private readonly string _monikor;
+
+        private bool _disposed = false;
 
         private IMediaControl _control = null;
         private AMMediaType _mediaType = null;
 
-        private string _monikerString = string.Empty;
-        private readonly int _desiredWidth;
-        private readonly int _desiredHeight;
         #endregion
 
         #region Constructor & destructor
-
-        /// <summary>
-        /// Initializes the default capture device
-        /// </summary>
-        /// <param name="desiredHeight">the desired height</param>
-        /// <param name="desiredWidth">the desired width</param>
-        public CapDevice(int desiredWidth, int desiredHeight, Dispatcher dispatcher)
-            : this(DeviceMonikers[0].MonikerString, desiredWidth, desiredHeight, dispatcher)
-        { }
 
         /// <summary>
         /// Initializes a specific capture device
@@ -41,89 +72,38 @@ namespace WpfCap
         /// <param name="moniker">Moniker string that represents a specific device</param>
         /// <param name="desiredHeight">the desired height</param>
         /// <param name="desiredWidth">the desired width</param>
-        public CapDevice(string moniker, int desiredWidth = 0, int desiredHeight = 0, Dispatcher dispatcher = null)
+        public CapDevice(string moniker)
         {
-            _stopSignal = new ManualResetEvent(true);
-            _monikerString = moniker;
-            _desiredWidth = desiredWidth;
-            _desiredHeight = desiredHeight;
+            _running = new ManualResetEvent(true);
+            _monikor = moniker;
+            _name = CameraDevices.GetFilter(moniker)?.Name;
+        }
 
-            // Find the name
-            foreach (FilterInfo filterInfo in DeviceMonikers)
-            {
-                if (filterInfo.MonikerString == moniker)
-                {
-                    Name = filterInfo.Name;
-                    break;
-                }
-            }
+        ~CapDevice()
+        { Dispose(false); }
+
+        public void Dispose(bool diposing)
+        { Stop(); }
+
+        public void Dispose()
+        {
+            GC.SuppressFinalize(true);
+            Dispose(true);
+            _disposed = true;
         }
 
         #endregion
 
-        #region Properties
-        /// <summary>
-        /// Gets the device monikers
-        /// </summary>
-        public static FilterInfo[] DeviceMonikers
-        {
-            get
-            {
-                List<FilterInfo> filters = new List<FilterInfo>();
-                IMoniker[] ms = new IMoniker[1];
-                ICreateDevEnum enumD = Activator.CreateInstance(Type.GetTypeFromCLSID(SystemDeviceEnum)) as ICreateDevEnum;
-                IEnumMoniker moniker;
-                Guid g = VideoInputDevice;
-                if (enumD.CreateClassEnumerator(ref g, out moniker, 0) == 0)
-                {
-                    while (true)
-                    {
-                        int r = moniker.Next(1, ms, IntPtr.Zero);
-                        if (r != 0 || ms[0] == null)
-                            break;
-                        filters.Add(new FilterInfo(ms[0]));
-                        Marshal.ReleaseComObject(ms[0]);
-                        ms[0] = null;
-                    }
-                }
-
-                return filters.ToArray();
-            }
-        }
-
-        /// <summary>
-        /// Gets the available devices
-        /// </summary>
-        public static CapDevice[] GetDevices(Dispatcher dispatcher)
-        {
-            // Declare variables
-            List<CapDevice> devices = new List<CapDevice>();
-
-            // Loop all monikers
-            foreach (FilterInfo moniker in DeviceMonikers)
-            { devices.Add(new CapDevice(moniker.MonikerString, 0, 0, dispatcher)); }
-
-            // Return result
-            return devices.ToArray();
-        }
-
-        /// <summary>
-        /// Wrapper for the Name dependency property
-        /// </summary>
-        public string Name
-        { get; private set; }
-
-        #endregion
 
         #region Methods
 
-        private void SelectWebcamResolution(IPin sourcePin)
+        private bool SelectWebcamResolution(IPin sourcePin, int desiredWidth, int desiredHeight)
         {
             var cfg = sourcePin as IAMStreamConfig;
+            var result = cfg.GetNumberOfCapabilities(out var capabilitiesCount, out _);
 
-            int capabilitiesCount = 0;
-            int capabilitiesResultStructureSize = 0;
-            var result = cfg.GetNumberOfCapabilities(out capabilitiesCount, out capabilitiesResultStructureSize);
+            int acquiredHeight = 0;
+            int acquiredWidth = 0;
 
             if (result == 0)
             {
@@ -134,14 +114,15 @@ namespace WpfCap
                 {
                     for (int i = 0; i != capabilitiesCount; ++i)
                     {
-                        AMMediaType capabilityInfo = null;
-                        result = cfg.GetStreamCaps(i, out capabilityInfo, gcHandle.AddrOfPinnedObject());
+                        result = cfg.GetStreamCaps(i, out var capabilityInfo, gcHandle.AddrOfPinnedObject());
+
                         using (capabilityInfo)
                         {
                             var infoHeader = (VideoInfoHeader)Marshal.PtrToStructure(capabilityInfo.FormatPtr, typeof(VideoInfoHeader));
 
-                            if (infoHeader.BmiHeader.Width == _desiredWidth &&
-                                infoHeader.BmiHeader.Height == _desiredHeight &&
+                            // if we get the resolution we expect then set
+                            if (infoHeader.BmiHeader.Width == desiredWidth &&
+                                infoHeader.BmiHeader.Height == desiredHeight &&
                                 infoHeader.BmiHeader.BitCount != 0)
                             {
                                 result = cfg.SetFormat(capabilityInfo);
@@ -153,27 +134,29 @@ namespace WpfCap
                 finally
                 { gcHandle.Free(); }
             }
+
+            return desiredWidth == acquiredWidth && desiredHeight == acquiredHeight;
         }
 
         /// <summary>
         /// Starts up thhe scanner.
         /// </summary>
         /// <returns></returns>
-        public async Task<IObservable<InteropBitmap>> Start()
+        public async Task<IObservable<InteropBitmap>> Start(int desiredWidth = 0, int desiredHeight = 0)
         {
-            if (!_stopSignal.Reset())
+            if (_disposed)
+            { throw new ObjectDisposedException(nameof(CapDevice)); }
+
+            if (!_running.Reset())
             { return null; }
 
-            var task = new Task<IObservable<InteropBitmap>>(() =>
+            var startTask = new Task<IObservable<InteropBitmap>>(() =>
             {
-                // Create new grabber
-                var capGrabber = new CapGrabber();
-
                 var graph = Activator.CreateInstance(Type.GetTypeFromCLSID(FilterGraph)) as IFilterGraph2;
-                var sourceObject = FilterInfo.CreateFilter(_monikerString);
+                var sourceObject = FilterInfo.CreateFilter(_monikor);
 
                 var outputPin = sourceObject.GetPin(PinCategory.Capture, 0);
-                SelectWebcamResolution(outputPin);
+                SelectWebcamResolution(outputPin, desiredWidth, desiredHeight);
 
                 var grabber = Activator.CreateInstance(Type.GetTypeFromCLSID(SampleGrabber)) as ISampleGrabber;
                 var grabberObject = grabber as IBaseFilter;
@@ -187,6 +170,11 @@ namespace WpfCap
                 _mediaType.MajorType = MediaTypes.Video;
                 _mediaType.SubType = MediaSubTypes.RGB32;
 
+
+                // Create new grabber
+                FrameStream frameBuffer = null;
+                int acquiredWidth = 0;
+                int acquiredHeight = 0;
                 if (grabber != null)
                 {
                     grabber.SetMediaType(_mediaType);
@@ -197,14 +185,17 @@ namespace WpfCap
                         if (grabber.GetConnectedMediaType(_mediaType) == 0)
                         {
                             var header = (VideoInfoHeader)Marshal.PtrToStructure(_mediaType.FormatPtr, typeof(VideoInfoHeader));
-                            capGrabber.Width = header.BmiHeader.Width;
-                            capGrabber.Height = header.BmiHeader.Height;
+                            acquiredWidth = header.BmiHeader.Width;
+                            acquiredHeight = header.BmiHeader.Height;
                         }
                     }
 
                     graph.Render(grabberObject.GetPin(PinDirection.Output, 0));
                     grabber.SetBufferSamples(false);
                     grabber.SetOneShot(false);
+
+                    frameBuffer = new FrameStream(acquiredWidth, acquiredHeight, PixelFormats.Bgr32);
+                    var capGrabber = new CapGrabber(frameBuffer);
                     grabber.SetCallback(capGrabber, 1);
                 }
 
@@ -216,11 +207,20 @@ namespace WpfCap
                 _control = (IMediaControl)graph;
                 _control.Run();
 
-                return capGrabber.Frame;
+                return frameBuffer?.Frame;
             });
 
-            task.Start();
-            return await task;
+            startTask.Start();
+            return await startTask;
+        }
+
+        /// <summary>
+        /// Stops grabbing images from the capture device
+        /// </summary>
+        public virtual void Stop()
+        {
+            Cleanup();
+            _running.Set();
         }
 
         private void Cleanup()
@@ -235,11 +235,6 @@ namespace WpfCap
             _mediaType = null;
         }
 
-        /// <summary>
-        /// Stops grabbing images from the capture device
-        /// </summary>
-        public virtual void Stop()
-        { _stopSignal.Set(); }
         #endregion
 
         #region Win32
@@ -327,10 +322,7 @@ namespace WpfCap
 
         #region IDisposable Members
 
-        public void Dispose()
-        {
-            Stop();
-        }
+
 
         #endregion
     }

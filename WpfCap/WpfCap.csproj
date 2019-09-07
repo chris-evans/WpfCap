@@ -88,7 +88,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="BitmapSourceCache.cs" />
+    <Compile Include="FrameStream.cs" />
     <Compile Include="CapDevice.cs" />
     <Compile Include="CapGrabber.cs" />
     <Compile Include="CapHelper.cs" />
