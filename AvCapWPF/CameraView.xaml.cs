@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -33,12 +35,16 @@ namespace AvCapWPF
 
                 Device = (CapDevice)DeviceBox.SelectedItem;
                 var frames = await Device.Start();
-                frames.ObserveOnDispatcher(DispatcherPriority.Render)
-                    .Subscribe(DoIt);
-            };
 
-            DeviceBox.SelectedIndex = 0;
-            CaptureButton.Click += CaptureButton_Click;
+                frames
+                    .ObserveOnDispatcher(DispatcherPriority.Render)
+                    .Subscribe(DoIt);
+
+                frames
+                .TimeInterval()
+                .Buffer(30, 5)
+                .Subscribe((x) => Console.WriteLine(30/( x.Sum((y) => y.Interval.TotalSeconds))));
+            };
         }
 
         private void DoIt(InteropBitmap bs)

@@ -204,10 +204,10 @@ namespace WpfCap
 		[PreserveSig]
 		new int RemoveFilter([In] IBaseFilter pFilter);
 
-		[PreserveSig]
-		new int EnumFilters([Out] out IEnumFilters ppEnum);
+        [PreserveSig]
+        new int EnumFilters([Out] out IEnumFilters ppEnum);
 
-		[PreserveSig]
+        [PreserveSig]
 		new int FindFilterByName(
 			[In, MarshalAs(UnmanagedType.LPWStr)] string pName,
 			[Out] out IBaseFilter ppFilter);

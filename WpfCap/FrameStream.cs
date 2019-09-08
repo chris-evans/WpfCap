@@ -1,14 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace WpfCap
 {
@@ -35,7 +29,6 @@ namespace WpfCap
             private readonly int _height;
             private readonly PixelFormat _pixelFormat;
 
-            private readonly InteropBitmap _bitmap;
             private readonly IntPtr _section;
             private readonly IntPtr _map;
 
@@ -56,6 +49,7 @@ namespace WpfCap
                 // each time a new image comes in we will create a new bitmap based on the new provided data.  We will also freeze the bitmap so it can be assigned outside
                 // of the UI thread.  This allows us to do almost all work off the UI thread, while the UI can simply update it's bound property to now include the new
                 // bitmap.
+
                 CopyMemory(_map, buffer, bufferLength);
                 var bitmap = Imaging.CreateBitmapSourceFromMemorySection(_section, _width, _height, _pixelFormat, _width * _pixelFormat.BitsPerPixel / 8, 0) as InteropBitmap;
                 bitmap.Freeze();

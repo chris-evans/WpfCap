@@ -20,7 +20,6 @@
                 <RotateTransform Angle="180" />
             </Image.RenderTransform>-->
         </Image>
-        <!--<wpfCap:CapPlayer x:Name="Player" Rotation="180" Grid.ColumnSpan="2"/>-->
         <ComboBox x:Name="DeviceBox" Grid.Row="1"  Grid.Column="0" VerticalAlignment="Center" Margin="5,5,2.5,5"/>
         <Button Name="CaptureButton" Grid.Row="1" Grid.Column="1" Content="Take Picture" Margin="2.5,5,5,5" Padding="5,0,5,0" x:FieldModifier="public"/>
     </Grid>

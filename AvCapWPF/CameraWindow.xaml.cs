@@ -37,13 +37,13 @@ namespace AvCapWPF
         {
             var device = Preview.Device;
             if (device != null)
-                device.Stop();
+            { device.Stop(); }
         }
         private void StartDevice()
         {
-            var device = Preview.Device;
-            if (device != null)
-                device.Start();
+            //var device = Preview.Device;
+            //if (device != null)
+            //    device.Start();
         }
 
         public delegate void CapturePhoto(BitmapSource image);
